@@ -12,6 +12,9 @@ function PreferenceForm() {
     preferences: ""
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   function handleChange(event) {
     setFormData({
       ...formData,
@@ -19,13 +22,39 @@ function PreferenceForm() {
     });
   }
 
-  function handleSubmit(event) {
+  function validate(data) {
+    const budget = parseFloat(data.budget);
+    if (!data.budget || isNaN(budget)) return "Budsjett må være et tall.";
+    if (budget <= 0) return "Budsjett må være større enn 0 kr.";
+    if (budget > 100000) return "Budsjett kan ikke overstige 100 000 kr.";
+    return null;
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    console.log("Form data:", formData);
+    const validationError = validate(formData);
+    if (validationError) { setError(validationError); return; }
 
-    // Senere skal dette sendes til backend
-    navigate("/results");
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("http://localhost:8080/api/meal-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, budget: parseFloat(formData.budget) })
+      });
+
+      if (!response.ok) throw new Error("Kunne ikke generere måltidsplan");
+
+      const mealPlan = await response.json();
+      navigate("/results", { state: { mealPlan } });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -55,6 +84,9 @@ function PreferenceForm() {
         <option value="Lactose Free">Laktosefri</option>
         <option value="Gluten Free">Glutenfri</option>
       </select>
+      <p style={{ fontSize: "0.8rem", color: "#666", margin: "0 0 0.5rem" }}>
+        Kostholdstype påvirker hvilke matvarer som foreslås.
+      </p>
 
       <label>Allergier</label>
       <input
@@ -64,6 +96,9 @@ function PreferenceForm() {
         onChange={handleChange}
         placeholder="F.eks. nøtter, melk"
       />
+      <p style={{ fontSize: "0.8rem", color: "#666", margin: "0 0 0.5rem" }}>
+        Produkter med disse ingrediensene i navnet vil bli filtrert ut.
+      </p>
 
       <label>Matpreferanser</label>
       <input
@@ -74,7 +109,10 @@ function PreferenceForm() {
         placeholder="F.eks. pasta, kylling, fisk"
       />
 
-      <button type="submit">Generer måltidsplan</button>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      <button type="submit" disabled={loading}>
+        {loading ? "Genererer..." : "Generer måltidsplan"}
+      </button>
     </form>
   );
 }
