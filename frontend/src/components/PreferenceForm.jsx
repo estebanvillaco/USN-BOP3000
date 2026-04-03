@@ -12,6 +12,9 @@ function PreferenceForm() {
     preferences: ""
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   function handleChange(event) {
     setFormData({
       ...formData,
@@ -19,13 +22,27 @@ function PreferenceForm() {
     });
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    setLoading(true);
+    setError(null);
 
-    console.log("Form data:", formData);
+    try {
+      const response = await fetch("http://localhost:8080/api/meal-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
 
-    // Senere skal dette sendes til backend
-    navigate("/results");
+      if (!response.ok) throw new Error("Kunne ikke generere måltidsplan");
+
+      const mealPlan = await response.json();
+      navigate("/results", { state: { mealPlan } });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -74,7 +91,10 @@ function PreferenceForm() {
         placeholder="F.eks. pasta, kylling, fisk"
       />
 
-      <button type="submit">Generer måltidsplan</button>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      <button type="submit" disabled={loading}>
+        {loading ? "Genererer..." : "Generer måltidsplan"}
+      </button>
     </form>
   );
 }
