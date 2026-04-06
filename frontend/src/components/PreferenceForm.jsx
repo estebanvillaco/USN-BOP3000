@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function PreferenceForm() {
+function PreferenceForm({ goal = "healthy" }) {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -31,7 +31,7 @@ function PreferenceForm() {
       const response = await fetch("http://localhost:8080/api/meal-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, goal })
       });
 
       if (!response.ok) throw new Error("Kunne ikke generere måltidsplan");

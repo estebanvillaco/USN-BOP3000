@@ -8,7 +8,7 @@ function HomePage() {
         Dette systemet hjelper brukere med å planlegge måltider basert på
         preferanser, allergier, kostholdsrestriksjoner og budsjett.
       </p>
-      <Link to="/planner" className="button-link">
+      <Link to="/goal" className="button-link">
         Start planlegging
       </Link>
       <div style={{ color: 'black', background: 'white' }}>Test: If you see this, the app is rendering.</div>
