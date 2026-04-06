@@ -22,11 +22,23 @@ function PreferenceForm({ goal = "healthy" }) {
     });
   }
 
+<<<<<<< HEAD
+=======
+  function validate(data) {
+    const budget = parseFloat(data.budget);
+    if (!data.budget || isNaN(budget)) return "Budsjett må være et tall.";
+    if (budget <= 0) return "Budsjett må være større enn 0 kr.";
+    if (budget > 100000) return "Budsjett kan ikke overstige 100 000 kr.";
+    return null;
+  }
+
+>>>>>>> f19a9760d6658d1b444331042040346fb576e4b2
   async function handleSubmit(event) {
     event.preventDefault();
     setLoading(true);
     setError(null);
 
+<<<<<<< HEAD
     try {
       const response = await fetch("http://localhost:8080/api/meal-plan", {
         method: "POST",
@@ -34,6 +46,21 @@ function PreferenceForm({ goal = "healthy" }) {
         body: JSON.stringify({ ...formData, goal })
       });
 
+=======
+    const validationError = validate(formData);
+    if (validationError) { setError(validationError); return; }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("http://localhost:8080/api/meal-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, budget: parseFloat(formData.budget) })
+      });
+
+>>>>>>> f19a9760d6658d1b444331042040346fb576e4b2
       if (!response.ok) throw new Error("Kunne ikke generere måltidsplan");
 
       const mealPlan = await response.json();
@@ -72,6 +99,9 @@ function PreferenceForm({ goal = "healthy" }) {
         <option value="Lactose Free">Laktosefri</option>
         <option value="Gluten Free">Glutenfri</option>
       </select>
+      <p style={{ fontSize: "0.8rem", color: "#666", margin: "0 0 0.5rem" }}>
+        Kostholdstype påvirker hvilke matvarer som foreslås.
+      </p>
 
       <label>Allergier</label>
       <input
@@ -81,6 +111,9 @@ function PreferenceForm({ goal = "healthy" }) {
         onChange={handleChange}
         placeholder="F.eks. nøtter, melk"
       />
+      <p style={{ fontSize: "0.8rem", color: "#666", margin: "0 0 0.5rem" }}>
+        Produkter med disse ingrediensene i navnet vil bli filtrert ut.
+      </p>
 
       <label>Matpreferanser</label>
       <input
