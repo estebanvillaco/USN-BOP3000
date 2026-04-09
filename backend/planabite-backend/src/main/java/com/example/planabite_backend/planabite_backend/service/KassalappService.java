@@ -14,8 +14,6 @@ public class KassalappService {
 
     private static final Logger log = LoggerFactory.getLogger(KassalappService.class);
 
-    // Products below this price are likely too small to represent a real meal ingredient
-    private static final double MIN_PRODUCT_PRICE = 20.0;
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -27,7 +25,7 @@ public class KassalappService {
                 .build();
     }
 
-    public Meal searchProduct(String query, int mealId, String day) {
+    public Meal searchProduct(String query, int mealId, String day, double minPrice) {
         try {
             log.info("Searching Kassalapp for: '{}'", query);
 
@@ -65,7 +63,7 @@ public class KassalappService {
                     cheapestPrice = price;
                     cheapestOverall = product;
                 }
-                if (price >= MIN_PRODUCT_PRICE && price < bestPriceAboveMin) {
+                if (price >= minPrice && price < bestPriceAboveMin) {
                     bestPriceAboveMin = price;
                     bestAboveMin = product;
                 }

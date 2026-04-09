@@ -1,12 +1,22 @@
-import { useLocation } from "react-router-dom";
-import mockMealPlan from "../data/MockMealPlan";
+import { useLocation, useNavigate } from "react-router-dom";
 import MealPlanCard from "../components/MealPlanCard";
 import ShoppingList from "../components/ShoppingList";
 import PriceSummary from "../components/PriceSummary";
 
 function ResultsPage() {
   const location = useLocation();
-  const mealPlan = location.state?.mealPlan ?? mockMealPlan;
+  const navigate = useNavigate();
+  const mealPlan = location.state?.mealPlan;
+
+  if (!mealPlan) {
+    return (
+      <div className="page">
+        <h2>Ingen måltidsplan funnet</h2>
+        <p>Gå tilbake og generer en plan først.</p>
+        <button onClick={() => navigate("/planner")}>Tilbake til planlegger</button>
+      </div>
+    );
+  }
 
   return (
     <div className="page">

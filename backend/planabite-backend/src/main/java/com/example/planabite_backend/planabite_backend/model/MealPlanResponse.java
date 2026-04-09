@@ -4,6 +4,6 @@ import java.util.List;
 
 public record MealPlanResponse(
         List<Meal> meals,
-        List<String> shoppingList,
+        List<IngredientItem> shoppingList,
         double totalCost
 ) {}

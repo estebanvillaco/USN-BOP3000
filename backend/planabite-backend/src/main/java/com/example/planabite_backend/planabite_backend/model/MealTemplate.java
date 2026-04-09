@@ -5,5 +5,6 @@ import java.util.List;
 public record MealTemplate(
         String name,
         String searchTerm,
-        List<String> tags
+        List<String> tags,
+        List<MealIngredient> ingredients
 ) {}
