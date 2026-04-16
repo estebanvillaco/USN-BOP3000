@@ -34,7 +34,10 @@ function PreferenceForm({ goal = "healthy" }) {
         body: JSON.stringify({ ...formData, goal })
       });
 
-      if (!response.ok) throw new Error("Kunne ikke generere måltidsplan");
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Kunne ikke generere måltidsplan");
+      }
 
       const mealPlan = await response.json();
       navigate("/results", { state: { mealPlan } });

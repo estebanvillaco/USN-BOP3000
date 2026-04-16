@@ -6,6 +6,10 @@ import com.example.planabite_backend.planabite_backend.model.MealIngredient;
 import com.example.planabite_backend.planabite_backend.model.MealPlanRequest;
 import com.example.planabite_backend.planabite_backend.model.MealPlanResponse;
 import com.example.planabite_backend.planabite_backend.model.MealTemplate;
+import com.example.planabite_backend.planabite_backend.model.SpoonacularIngredient;
+import com.example.planabite_backend.planabite_backend.model.SpoonacularRecipe;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -15,10 +19,13 @@ import java.util.List;
 @Service
 public class MealPlanService {
 
+    private static final Logger log = LoggerFactory.getLogger(MealPlanService.class);
+
     private static final String[] DAYS = {
             "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"
     };
 
+    // Fallback library used when Spoonacular returns no results
     private static final List<MealTemplate> MEAL_LIBRARY = List.of(
             new MealTemplate("Kyllingfilet med ris og grønnsaker", "kyllingfilet",
                     List.of("kylling", "ris", "grønnsaker", "sunn"),
@@ -101,31 +108,6 @@ public class MealPlanService {
                             new MealIngredient("Fløte",  "2 dl", "fløte",  20.0)
                     )),
 
-            new MealTemplate("Baguette med skinke, ost og paprika", "baguette",
-                    List.of("baguette", "brød", "skinke", "ost", "paprika"),
-                    List.of(
-                            new MealIngredient("Baguette", "2 stk", "baguette", 20.0),
-                            new MealIngredient("Skinke",   "200g",  "skinke",   30.0),
-                            new MealIngredient("Ost",      "200g",  "ost",      35.0),
-                            new MealIngredient("Paprika",  "2 stk", "paprika",  15.0)
-                    )),
-
-            new MealTemplate("Fullkornsbrød med avokado og egg", "egg",
-                    List.of("brød", "fullkorn", "avokado", "egg"),
-                    List.of(
-                            new MealIngredient("Fullkornsbrød", "1 pk",  "fullkornsbrød", 25.0),
-                            new MealIngredient("Avokado",       "3 stk", "avokado",       20.0),
-                            new MealIngredient("Egg",           "4 stk", "egg",           30.0)
-                    )),
-
-            new MealTemplate("Pizzabrød med tomatsaus og ost", "pizzabrød",
-                    List.of("pizza", "brød", "ost", "tomat"),
-                    List.of(
-                            new MealIngredient("Pizzabrød",  "1 pk",   "pizzabrød",  25.0),
-                            new MealIngredient("Tomatsaus",  "1 boks", "tomatsaus",  15.0),
-                            new MealIngredient("Ost",        "200g",   "ost",        35.0)
-                    )),
-
             new MealTemplate("Grønnsaksuppe med brød", "grønnsakssuppe",
                     List.of("suppe", "grønnsaker", "brød"),
                     List.of(
@@ -158,14 +140,6 @@ public class MealPlanService {
                             new MealIngredient("Tomat",   "4 stk", "tomat",   15.0)
                     )),
 
-            new MealTemplate("Bønnesuppe med fullkornsbrød", "bønner",
-                    List.of("suppe", "bønner", "fullkorn", "vegan"),
-                    List.of(
-                            new MealIngredient("Bønner",        "2 bokser", "bønner",        20.0),
-                            new MealIngredient("Fullkornsbrød", "1 pk",     "fullkornsbrød", 25.0),
-                            new MealIngredient("Purre",         "1 stk",    "purre",         10.0)
-                    )),
-
             new MealTemplate("Omelett med paprika, ost og skinke", "egg",
                     List.of("egg", "omelett", "paprika", "ost", "skinke"),
                     List.of(
@@ -173,14 +147,6 @@ public class MealPlanService {
                             new MealIngredient("Paprika", "2 stk", "paprika",15.0),
                             new MealIngredient("Ost",     "150g",  "ost",    30.0),
                             new MealIngredient("Skinke",  "150g",  "skinke", 25.0)
-                    )),
-
-            new MealTemplate("Eggerøre med tomat og urter", "egg",
-                    List.of("egg", "tomat", "urter"),
-                    List.of(
-                            new MealIngredient("Egg",      "6 stk", "egg",      30.0),
-                            new MealIngredient("Tomat",    "4 stk", "tomat",    15.0),
-                            new MealIngredient("Gressløk", "1 pk",  "gressløk", 10.0)
                     )),
 
             new MealTemplate("Tacos med kjøttdeig og grønnsaker", "kjøttdeig",
@@ -192,23 +158,6 @@ public class MealPlanService {
                             new MealIngredient("Rømme",      "200 ml", "rømme",      20.0)
                     )),
 
-            new MealTemplate("Kjøttkaker med brun saus og poteter", "kjøttkaker",
-                    List.of("kjøtt", "kjøttkaker", "potet", "saus"),
-                    List.of(
-                            new MealIngredient("Kjøttkaker", "500g", "kjøttkaker", 50.0),
-                            new MealIngredient("Potet",      "1 kg", "potet",      20.0),
-                            new MealIngredient("Brunsaus",   "1 pk", "brunsaus",   15.0)
-                    )),
-
-            new MealTemplate("Lammekjøtt med rotgrønnsaker", "lam",
-                    List.of("lam", "kjøtt", "rotgrønnsaker"),
-                    List.of(
-                            new MealIngredient("Lam",    "600g",  "lam",    100.0),
-                            new MealIngredient("Gulrot", "4 stk", "gulrot",  10.0),
-                            new MealIngredient("Potet",  "600g",  "potet",   20.0),
-                            new MealIngredient("Kålrot", "1 stk", "kålrot",  10.0)
-                    )),
-
             new MealTemplate("Tunfisksalat med paprika og mais", "tunfisk",
                     List.of("tunfisk", "salat", "paprika", "mais", "fisk"),
                     List.of(
@@ -216,22 +165,6 @@ public class MealPlanService {
                             new MealIngredient("Paprika", "2 stk",    "paprika", 15.0),
                             new MealIngredient("Mais",    "1 boks",   "mais",    15.0),
                             new MealIngredient("Salat",   "1 pose",   "salat",   20.0)
-                    )),
-
-            new MealTemplate("Rekesalat med avokado og sitron", "reker",
-                    List.of("reker", "sjømat", "salat", "avokado"),
-                    List.of(
-                            new MealIngredient("Reker",   "400g",  "reker",   80.0),
-                            new MealIngredient("Avokado", "2 stk", "avokado", 20.0),
-                            new MealIngredient("Sitron",  "2 stk", "sitron",  10.0)
-                    )),
-
-            new MealTemplate("Cottage cheese med frukt og nøtter", "cottage cheese",
-                    List.of("cottage cheese", "protein", "frukt"),
-                    List.of(
-                            new MealIngredient("Cottage cheese", "500g", "cottage cheese", 30.0),
-                            new MealIngredient("Eple",           "500g", "eple",           20.0),
-                            new MealIngredient("Nøtter",         "100g", "nøtter",         30.0)
                     )),
 
             new MealTemplate("Tofu wok med ris og grønnsaker", "tofu",
@@ -259,21 +192,91 @@ public class MealPlanService {
                     ))
     );
 
-    // Goal-based fallback keyword lists
-    private static final List<String> HEALTHY_TAGS     = List.of("kylling", "laks", "grønnsaker", "salat", "linser", "tofu", "fisk");
-    private static final List<String> WEIGHT_LOSS_TAGS = List.of("salat", "suppe", "egg", "brokkoli", "grønnsaker", "kylling", "fisk");
-    private static final List<String> MUSCLE_GAIN_TAGS = List.of("kylling", "egg", "laks", "kjøtt", "cottage cheese", "tunfisk", "reker");
-    private static final List<String> DEFAULT_TAGS     = List.of("kylling", "pasta", "fisk", "suppe", "kjøtt", "grønnsaker", "laks");
-
     private final KassalappService kassalappService;
+    private final SpoonacularService spoonacularService;
+    private final IngredientTranslator translator;
 
-    public MealPlanService(KassalappService kassalappService) {
+    public MealPlanService(KassalappService kassalappService,
+                           SpoonacularService spoonacularService,
+                           IngredientTranslator translator) {
         this.kassalappService = kassalappService;
+        this.spoonacularService = spoonacularService;
+        this.translator = translator;
     }
 
     public MealPlanResponse generate(MealPlanRequest request) {
         int numDays = parseIntOrDefault(request.days(), 7);
         double budget = parseDoubleOrDefault(request.budget(), Double.MAX_VALUE);
+
+        String query        = buildSpoonacularQuery(request.preferences(), request.goal());
+        String diet         = spoonacularService.mapDietType(request.dietType());
+        String intolerances = spoonacularService.mapIntolerances(request.allergies());
+
+        log.info("Fetching Spoonacular recipes: query='{}', diet='{}', intolerances='{}'", query, diet, intolerances);
+        List<SpoonacularRecipe> recipes = spoonacularService.findRecipes(query, diet, intolerances, numDays + 3);
+
+        if (recipes.isEmpty()) {
+            log.warn("Spoonacular returned no recipes for query='{}', diet='{}', intolerances='{}'", query, diet, intolerances);
+            throw new IllegalStateException("Fant ingen oppskrifter fra Spoonacular. Prøv andre preferanser eller kostholdstype.");
+        }
+
+        List<Meal> meals = new ArrayList<>();
+        List<IngredientItem> shoppingList = new ArrayList<>();
+        double totalCost = 0;
+
+        for (int i = 0; i < numDays; i++) {
+            SpoonacularRecipe recipe = recipes.get(i % recipes.size());
+            String day = DAYS[i % DAYS.length];
+
+            List<IngredientItem> mealIngredients = new ArrayList<>();
+            double mealCost = 0;
+
+            for (SpoonacularIngredient ingredient : recipe.ingredients()) {
+                String norwegianTerm = translator.toNorwegian(ingredient.name());
+                double minPrice      = translator.getMinPrice(norwegianTerm);
+
+                Meal priceResult = kassalappService.searchProduct(norwegianTerm, i + 1, day, minPrice);
+                if (priceResult == null) continue;
+
+                mealIngredients.add(new IngredientItem(
+                        norwegianTerm,
+                        ingredient.amount(),
+                        priceResult.name(),
+                        priceResult.price(),
+                        priceResult.store()
+                ));
+                mealCost += priceResult.price();
+            }
+
+            if (mealIngredients.isEmpty()) continue;
+
+            mealCost = Math.round(mealCost * 100.0) / 100.0;
+            if (totalCost + mealCost > budget) continue;
+
+            String mainStore = mealIngredients.get(0).store();
+            meals.add(new Meal(i + 1, day, recipe.title(), mainStore, mealCost));
+            shoppingList.addAll(mealIngredients);
+            totalCost += mealCost;
+        }
+
+        return new MealPlanResponse(meals, shoppingList, Math.round(totalCost * 100.0) / 100.0);
+    }
+
+    private String buildSpoonacularQuery(String preferences, String goal) {
+        if (preferences != null && !preferences.isBlank()) {
+            return preferences.trim();
+        }
+        if (goal == null) return "dinner";
+        return switch (goal) {
+            case "healthy"     -> "healthy dinner";
+            case "weight_loss" -> "low calorie meal";
+            case "muscle_gain" -> "high protein meal";
+            default            -> "dinner";
+        };
+    }
+
+    // Fallback: generate a plan from the built-in Norwegian meal library
+    private MealPlanResponse generateFromLibrary(MealPlanRequest request, int numDays, double budget) {
         List<String> keywords = resolveKeywords(request.preferences(), request.goal());
 
         List<Meal> meals = new ArrayList<>();
@@ -286,7 +289,6 @@ public class MealPlanService {
 
             MealTemplate template = findTemplate(keyword, i);
 
-            // Look up the price for each ingredient individually
             List<IngredientItem> mealIngredients = new ArrayList<>();
             double mealCost = 0;
 
@@ -309,8 +311,7 @@ public class MealPlanService {
             if (totalCost + mealCost > budget) continue;
 
             String mainStore = mealIngredients.get(0).store();
-            Meal meal = new Meal(i + 1, day, template.name(), mainStore, mealCost);
-            meals.add(meal);
+            meals.add(new Meal(i + 1, day, template.name(), mainStore, mealCost));
             shoppingList.addAll(mealIngredients);
             totalCost += mealCost;
         }
@@ -330,6 +331,11 @@ public class MealPlanService {
 
         return MEAL_LIBRARY.get(dayIndex % MEAL_LIBRARY.size());
     }
+
+    private static final List<String> HEALTHY_TAGS     = List.of("kylling", "laks", "grønnsaker", "salat", "linser", "tofu", "fisk");
+    private static final List<String> WEIGHT_LOSS_TAGS = List.of("salat", "suppe", "egg", "brokkoli", "grønnsaker", "kylling", "fisk");
+    private static final List<String> MUSCLE_GAIN_TAGS = List.of("kylling", "egg", "laks", "kjøtt", "cottage cheese", "tunfisk", "reker");
+    private static final List<String> DEFAULT_TAGS     = List.of("kylling", "pasta", "fisk", "suppe", "kjøtt", "grønnsaker", "laks");
 
     private List<String> resolveKeywords(String preferences, String goal) {
         if (preferences != null && !preferences.isBlank()) {

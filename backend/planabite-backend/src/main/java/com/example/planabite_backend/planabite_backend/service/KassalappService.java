@@ -57,6 +57,7 @@ public class KassalappService {
             double cheapestPrice = Double.MAX_VALUE;
 
             for (JsonNode product : data) {
+                if (isExcludedProduct(product)) continue;
                 double price = product.path("current_price").asDouble(0.0);
                 if (price <= 0) continue;
                 if (price < cheapestPrice) {
@@ -87,5 +88,39 @@ public class KassalappService {
             log.error("Error searching Kassalapp for '{}': {}", query, e.getMessage(), e);
             return null;
         }
+    }
+
+    private boolean isExcludedProduct(JsonNode product) {
+        String name = product.path("name").asText("").toLowerCase();
+
+        // Baby food
+        if (name.contains("baby") || name.contains("babymat") || name.contains("spedbarn") ||
+            name.contains("barnemat") || name.contains("barnegrøt") || name.contains("småbarn") ||
+            name.matches(".*\\b\\d+\\s*mnd\\b.*") || name.matches(".*\\bfra \\d+\\b.*")) {
+            return true;
+        }
+
+        // Candy, lozenges, throat drops
+        if (name.contains("fisherman") || name.contains("pastill") || name.contains("halspastill") ||
+            name.contains("godteri") || name.contains("karamell") || name.contains("drops") ||
+            name.contains("tyggegummi") || name.contains("lakrisbiter") || name.contains("sjokolade") ||
+            name.contains("slikkeri")) {
+            return true;
+        }
+
+        // Snacks and junk food
+        if (name.contains("chips") || name.contains("popcorn") || name.contains("poppet") ||
+            name.contains("snack") || name.contains("kjeks") || name.contains("kli-bolle")) {
+            return true;
+        }
+
+        // Ready-made meals and powders
+        if (name.contains("ferdigmat") || name.contains("ferdigrett") || name.contains("middagspose") ||
+            name.contains("posematrett") || name.contains("protein pulver") || name.contains("proteinpulver") ||
+            name.contains("kosttilskudd")) {
+            return true;
+        }
+
+        return false;
     }
 }
