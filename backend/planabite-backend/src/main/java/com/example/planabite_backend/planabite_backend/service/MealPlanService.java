@@ -2,10 +2,11 @@ package com.example.planabite_backend.planabite_backend.service;
 
 import com.example.planabite_backend.planabite_backend.model.IngredientItem;
 import com.example.planabite_backend.planabite_backend.model.Meal;
-import com.example.planabite_backend.planabite_backend.model.MealIngredient;
+import com.example.planabite_backend.planabite_backend.model.MealEntity;
+import com.example.planabite_backend.planabite_backend.model.MealIngredientEntity;
 import com.example.planabite_backend.planabite_backend.model.MealPlanRequest;
 import com.example.planabite_backend.planabite_backend.model.MealPlanResponse;
-import com.example.planabite_backend.planabite_backend.model.MealTemplate;
+import com.example.planabite_backend.planabite_backend.repository.MealRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,184 +24,21 @@ public class MealPlanService {
             "Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"
     };
 
-    private static final List<MealTemplate> MEAL_LIBRARY = List.of(
-            new MealTemplate("Kyllingfilet med ris og grønnsaker", "kyllingfilet",
-                    List.of("kylling", "ris", "grønnsaker", "sunn"),
-                    List.of(
-                            new MealIngredient("Kyllingfilet", "600g", "kyllingfilet", 70.0),
-                            new MealIngredient("Ris", "400g", "ris", 20.0),
-                            new MealIngredient("Frosne grønnsaker", "400g", "frosne grønnsaker", 20.0)
-                    )),
-
-            new MealTemplate("Kylling med paprika og løk i ovn", "kyllingfilet",
-                    List.of("kylling", "paprika", "løk"),
-                    List.of(
-                            new MealIngredient("Kyllingfilet", "600g", "kyllingfilet", 70.0),
-                            new MealIngredient("Paprika", "3 stk", "paprika", 15.0),
-                            new MealIngredient("Løk", "2 stk", "løk", 10.0)
-                    )),
-
-            new MealTemplate("Wok med kylling og grønnsaker", "kylling",
-                    List.of("kylling", "wok", "grønnsaker"),
-                    List.of(
-                            new MealIngredient("Kylling", "500g", "kylling", 60.0),
-                            new MealIngredient("Wok-grønnsaker", "400g", "wok grønnsaker", 20.0),
-                            new MealIngredient("Soyasaus", "1 flaske", "soyasaus", 20.0)
-                    )),
-
-            new MealTemplate("Salat med grillet kylling og fetaost", "kylling",
-                    List.of("kylling", "salat", "ost"),
-                    List.of(
-                            new MealIngredient("Kylling", "400g", "kylling", 55.0),
-                            new MealIngredient("Salat", "1 pose", "salat", 20.0),
-                            new MealIngredient("Fetaost", "200g", "fetaost", 35.0)
-                    )),
-
-            new MealTemplate("Laksfilet med poteter og asparges", "laks",
-                    List.of("laks", "fisk", "potet", "asparges", "sunn"),
-                    List.of(
-                            new MealIngredient("Laks", "600g", "laks", 90.0),
-                            new MealIngredient("Poteter", "1 kg", "poteter", 20.0),
-                            new MealIngredient("Asparges", "400g", "asparges", 30.0)
-                    )),
-
-            new MealTemplate("Stekt laks med sitron og brokkoliris", "laks",
-                    List.of("laks", "fisk", "sitron", "brokkoli"),
-                    List.of(
-                            new MealIngredient("Laks", "600g", "laks", 90.0),
-                            new MealIngredient("Brokkoli", "500g", "brokkoli", 25.0),
-                            new MealIngredient("Ris", "400g", "ris", 20.0),
-                            new MealIngredient("Sitron", "2 stk", "sitron", 10.0)
-                    )),
-
-            new MealTemplate("Eggerøre med laks og rømme", "egg",
-                    List.of("laks", "egg", "rømme"),
-                    List.of(
-                            new MealIngredient("Egg", "6 stk", "egg", 30.0),
-                            new MealIngredient("Laks", "300g", "laks", 60.0),
-                            new MealIngredient("Rømme", "200 ml", "rømme", 20.0)
-                    )),
-
-            new MealTemplate("Pasta med kjøttdeig og tomatsaus", "pasta",
-                    List.of("pasta", "kjøttdeig", "tomat"),
-                    List.of(
-                            new MealIngredient("Pasta", "400g", "pasta", 20.0),
-                            new MealIngredient("Kjøttdeig", "500g", "kjøttdeig", 50.0),
-                            new MealIngredient("Tomatsaus", "1 boks", "tomatsaus", 15.0)
-                    )),
-
-            new MealTemplate("Pasta med paprika og karbonadedeig", "pasta",
-                    List.of("pasta", "paprika", "karbonadedeig", "kjøtt"),
-                    List.of(
-                            new MealIngredient("Pasta", "400g", "pasta", 20.0),
-                            new MealIngredient("Karbonadedeig", "400g", "karbonadedeig", 45.0),
-                            new MealIngredient("Paprika", "3 stk", "paprika", 15.0)
-                    )),
-
-            new MealTemplate("Pasta med laks og fløtesaus", "pasta",
-                    List.of("pasta", "laks", "fisk", "fløte"),
-                    List.of(
-                            new MealIngredient("Pasta", "400g", "pasta", 20.0),
-                            new MealIngredient("Laks", "400g", "laks", 70.0),
-                            new MealIngredient("Fløte", "2 dl", "fløte", 20.0)
-                    )),
-
-            new MealTemplate("Grønnsaksuppe med brød", "grønnsakssuppe",
-                    List.of("suppe", "grønnsaker", "brød", "vegan", "vegetar"),
-                    List.of(
-                            new MealIngredient("Grønnsakssuppe", "1 pk", "grønnsakssuppe", 25.0),
-                            new MealIngredient("Grønnsaker", "400g", "grønnsaker", 20.0),
-                            new MealIngredient("Brød", "1 stk", "brød", 25.0)
-                    )),
-
-            new MealTemplate("Tomatsuppe med fullkornsbrød", "tomatsuppe",
-                    List.of("suppe", "tomat", "brød", "vegan", "vegetar"),
-                    List.of(
-                            new MealIngredient("Tomatsuppe", "1 pk", "tomatsuppe", 25.0),
-                            new MealIngredient("Fullkornsbrød", "1 pk", "fullkornsbrød", 25.0)
-                    )),
-
-            new MealTemplate("Fiskesuppe med gulrot og purre", "fiskesuppe",
-                    List.of("suppe", "fisk", "gulrot", "purre"),
-                    List.of(
-                            new MealIngredient("Fiskesuppe", "1 pk", "fiskesuppe", 40.0),
-                            new MealIngredient("Gulrot", "4 stk", "gulrot", 10.0),
-                            new MealIngredient("Purre", "1 stk", "purre", 10.0)
-                    )),
-
-            new MealTemplate("Linsesuppe med grønnsaker", "linser",
-                    List.of("suppe", "linser", "grønnsaker", "vegan", "vegetar", "sunn"),
-                    List.of(
-                            new MealIngredient("Linser", "400g", "linser", 20.0),
-                            new MealIngredient("Gulrot", "4 stk", "gulrot", 10.0),
-                            new MealIngredient("Selleri", "1 stk", "selleri", 10.0),
-                            new MealIngredient("Tomat", "4 stk", "tomat", 15.0)
-                    )),
-
-            new MealTemplate("Omelett med paprika, ost og skinke", "egg",
-                    List.of("egg", "omelett", "paprika", "ost", "skinke"),
-                    List.of(
-                            new MealIngredient("Egg", "6 stk", "egg", 30.0),
-                            new MealIngredient("Paprika", "2 stk", "paprika", 15.0),
-                            new MealIngredient("Ost", "150g", "ost", 30.0),
-                            new MealIngredient("Skinke", "150g", "skinke", 25.0)
-                    )),
-
-            new MealTemplate("Tacos med kjøttdeig og grønnsaker", "kjøttdeig",
-                    List.of("tacos", "kjøttdeig", "kjøtt", "grønnsaker"),
-                    List.of(
-                            new MealIngredient("Kjøttdeig", "500g", "kjøttdeig", 50.0),
-                            new MealIngredient("Taco-skjell", "1 pk", "taco skjell", 20.0),
-                            new MealIngredient("Salsa", "1 boks", "salsa", 20.0),
-                            new MealIngredient("Rømme", "200 ml", "rømme", 20.0)
-                    )),
-
-            new MealTemplate("Tunfisksalat med paprika og mais", "tunfisk",
-                    List.of("tunfisk", "salat", "paprika", "mais", "fisk"),
-                    List.of(
-                            new MealIngredient("Tunfisk", "2 bokser", "tunfisk", 30.0),
-                            new MealIngredient("Paprika", "2 stk", "paprika", 15.0),
-                            new MealIngredient("Mais", "1 boks", "mais", 15.0),
-                            new MealIngredient("Salat", "1 pose", "salat", 20.0)
-                    )),
-
-            new MealTemplate("Tofu wok med ris og grønnsaker", "tofu",
-                    List.of("tofu", "ris", "grønnsaker", "vegan", "vegetar"),
-                    List.of(
-                            new MealIngredient("Tofu", "400g", "tofu", 30.0),
-                            new MealIngredient("Ris", "400g", "ris", 20.0),
-                            new MealIngredient("Wok-grønnsaker", "400g", "wok grønnsaker", 20.0)
-                    )),
-
-            new MealTemplate("Dampet brokkoli og kylling med hvitløk", "kyllingfilet",
-                    List.of("brokkoli", "kylling", "hvitløk", "sunn"),
-                    List.of(
-                            new MealIngredient("Kyllingfilet", "600g", "kyllingfilet", 70.0),
-                            new MealIngredient("Brokkoli", "600g", "brokkoli", 25.0),
-                            new MealIngredient("Hvitløk", "1 pk", "hvitløk", 10.0)
-                    )),
-
-            new MealTemplate("Salat med egg, tomat og agurk", "egg",
-                    List.of("salat", "egg", "tomat", "agurk", "vegetar"),
-                    List.of(
-                            new MealIngredient("Egg", "6 stk", "egg", 30.0),
-                            new MealIngredient("Tomat", "4 stk", "tomat", 15.0),
-                            new MealIngredient("Agurk", "1 stk", "agurk", 10.0)
-                    ))
-    );
-
     private final KassalappService kassalappService;
+    private final MealRepository mealRepository;
 
-    public MealPlanService(KassalappService kassalappService) {
+    public MealPlanService(KassalappService kassalappService, MealRepository mealRepository) {
         this.kassalappService = kassalappService;
+        this.mealRepository = mealRepository;
     }
 
     public MealPlanResponse generate(MealPlanRequest request) {
         int numDays = parseIntOrDefault(request.days(), 7);
         double budget = parseDoubleOrDefault(request.budget(), Double.MAX_VALUE);
 
+        List<MealEntity> library = mealRepository.findAll();
         List<String> keywords = resolveKeywords(request.preferences(), request.goal(), request.dietType());
-        List<MealTemplate> candidates = filterByDiet(request.dietType(), request.allergies());
+        List<MealEntity> candidates = filterByDiet(library, request.dietType(), request.allergies());
 
         List<Meal> meals = new ArrayList<>();
         List<IngredientItem> shoppingList = new ArrayList<>();
@@ -210,20 +48,20 @@ public class MealPlanService {
             String keyword = keywords.get(i % keywords.size());
             String day = DAYS[i % DAYS.length];
 
-            MealTemplate template = findTemplate(candidates, keyword, i);
-            log.info("Day {}: selected meal '{}'", i + 1, template.name());
+            MealEntity template = findTemplate(candidates, keyword, i);
+            log.info("Day {}: selected meal '{}'", i + 1, template.getName());
 
             List<IngredientItem> mealIngredients = new ArrayList<>();
             double mealCost = 0;
 
-            for (MealIngredient ingredient : template.ingredients()) {
+            for (MealIngredientEntity ingredient : template.getIngredients()) {
                 Meal priceResult = kassalappService.searchProduct(
-                        ingredient.searchTerm(), i + 1, day, ingredient.minPrice());
+                        ingredient.getSearchTerm(), i + 1, day, ingredient.getMinPrice());
                 if (priceResult == null) continue;
 
                 mealIngredients.add(new IngredientItem(
-                        ingredient.displayName(),
-                        ingredient.amount(),
+                        ingredient.getDisplayName(),
+                        ingredient.getAmount(),
                         priceResult.name(),
                         priceResult.price(),
                         priceResult.store(),
@@ -238,7 +76,7 @@ public class MealPlanService {
             if (totalCost + mealCost > budget) continue;
 
             String mainStore = mealIngredients.get(0).store();
-            meals.add(new Meal(i + 1, day, template.name(), mainStore, mealCost));
+            meals.add(new Meal(i + 1, day, template.getName(), mainStore, mealCost));
             shoppingList.addAll(mealIngredients);
             totalCost += mealCost;
         }
@@ -246,18 +84,18 @@ public class MealPlanService {
         return new MealPlanResponse(meals, shoppingList, Math.round(totalCost * 100.0) / 100.0);
     }
 
-    private List<MealTemplate> filterByDiet(String dietType, String allergies) {
-        List<MealTemplate> result = new ArrayList<>(MEAL_LIBRARY);
+    private List<MealEntity> filterByDiet(List<MealEntity> library, String dietType, String allergies) {
+        List<MealEntity> result = new ArrayList<>(library);
 
         if (dietType != null) {
             String lc = dietType.toLowerCase();
             if (lc.contains("vegan")) {
                 result = result.stream()
-                        .filter(t -> t.tags().contains("vegan"))
+                        .filter(e -> parseTags(e).contains("vegan"))
                         .toList();
             } else if (lc.contains("vegetar")) {
                 result = result.stream()
-                        .filter(t -> t.tags().contains("vegan") || t.tags().contains("vegetar"))
+                        .filter(e -> { List<String> tags = parseTags(e); return tags.contains("vegan") || tags.contains("vegetar"); })
                         .toList();
             }
         }
@@ -266,31 +104,41 @@ public class MealPlanService {
             String lc = allergies.toLowerCase();
             if (lc.contains("fisk") || lc.contains("seafood")) {
                 result = result.stream()
-                        .filter(t -> t.tags().stream().noneMatch(tag ->
+                        .filter(e -> parseTags(e).stream().noneMatch(tag ->
                                 tag.equals("fisk") || tag.equals("laks") || tag.equals("tunfisk")))
                         .toList();
             }
             if (lc.contains("egg")) {
                 result = result.stream()
-                        .filter(t -> t.tags().stream().noneMatch(tag -> tag.equals("egg")))
+                        .filter(e -> parseTags(e).stream().noneMatch(tag -> tag.equals("egg")))
                         .toList();
             }
         }
 
-        return result.isEmpty() ? MEAL_LIBRARY : result;
+        return result.isEmpty() ? library : result;
     }
 
-    private MealTemplate findTemplate(List<MealTemplate> candidates, String keyword, int dayIndex) {
+    private MealEntity findTemplate(List<MealEntity> candidates, String keyword, int dayIndex) {
         String lc = keyword.toLowerCase().trim();
-        List<MealTemplate> matches = candidates.stream()
-                .filter(t -> t.tags().stream().anyMatch(tag ->
+        List<MealEntity> matches = candidates.stream()
+                .filter(e -> parseTags(e).stream().anyMatch(tag ->
                         tag.toLowerCase().contains(lc) || lc.contains(tag.toLowerCase())))
                 .toList();
 
-        if (!matches.isEmpty()) {
-            return matches.get(dayIndex % matches.size());
-        }
-        return candidates.get(dayIndex % candidates.size());
+        return !matches.isEmpty()
+                ? matches.get(dayIndex % matches.size())
+                : candidates.get(dayIndex % candidates.size());
+    }
+
+    private List<String> parseTags(MealEntity entity) {
+        List<String> tags = new ArrayList<>();
+        if (entity.getDietType() != null)
+            tags.addAll(Arrays.asList(entity.getDietType().split(",")));
+        if (entity.getGoal() != null)
+            tags.addAll(Arrays.asList(entity.getGoal().split(",")));
+        if (entity.getTags() != null)
+            tags.addAll(Arrays.asList(entity.getTags().split(",")));
+        return tags.stream().map(String::trim).filter(s -> !s.isEmpty()).toList();
     }
 
     private static final List<String> HEALTHY_TAGS     = List.of("kylling", "laks", "grønnsaker", "salat", "linser", "tofu", "fisk");
