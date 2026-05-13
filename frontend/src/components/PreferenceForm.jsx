@@ -9,7 +9,8 @@ function PreferenceForm({ goal = "healthy" }) {
     days: "7",
     dietType: "None",
     allergies: "",
-    preferences: ""
+    preferences: "",
+    preferredStore: ""
   });
 
   const [loading, setLoading] = useState(false);
@@ -93,6 +94,12 @@ function PreferenceForm({ goal = "healthy" }) {
         onChange={handleChange}
         placeholder="F.eks. pasta, kylling, fisk"
       />
+
+      <label>Butikkvalg</label>
+      <select name="preferredStore" value={formData.preferredStore} onChange={handleChange}>
+        <option value="">Alle butikker</option>
+        <option value="cheapest">Finn billigste butikk</option>
+      </select>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
       <button type="submit" disabled={loading}>

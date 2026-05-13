@@ -40,6 +40,10 @@ public class MealPlanService {
         List<String> keywords = resolveKeywords(request.preferences(), request.goal(), request.dietType());
         List<MealEntity> candidates = filterByDiet(library, request.dietType(), request.allergies());
 
+        if ("cheapest".equals(request.preferredStore())) {
+            return generateWithCheapestStore(numDays, budget, keywords, candidates);
+        }
+
         List<Meal> meals = new ArrayList<>();
         List<IngredientItem> shoppingList = new ArrayList<>();
         double totalCost = 0;
@@ -56,17 +60,11 @@ public class MealPlanService {
 
             for (MealIngredientEntity ingredient : template.getIngredients()) {
                 Meal priceResult = kassalappService.searchProduct(
-                        ingredient.getSearchTerm(), i + 1, day, ingredient.getMinPrice());
+                        ingredient.getSearchTerm(), i + 1, day, ingredient.getMinPrice(), request.preferredStore());
                 if (priceResult == null) continue;
-
                 mealIngredients.add(new IngredientItem(
-                        ingredient.getDisplayName(),
-                        ingredient.getAmount(),
-                        priceResult.name(),
-                        priceResult.price(),
-                        priceResult.store(),
-                        day
-                ));
+                        ingredient.getDisplayName(), ingredient.getAmount(),
+                        priceResult.name(), priceResult.price(), priceResult.store(), day));
                 mealCost += priceResult.price();
             }
 
@@ -77,6 +75,83 @@ public class MealPlanService {
 
             String mainStore = mealIngredients.get(0).store();
             meals.add(new Meal(i + 1, day, template.getName(), mainStore, mealCost));
+            shoppingList.addAll(mealIngredients);
+            totalCost += mealCost;
+        }
+
+        return new MealPlanResponse(meals, shoppingList, Math.round(totalCost * 100.0) / 100.0);
+    }
+
+    /**
+     * Two-pass generation for "cheapest store" mode:
+     * Pass 1 — fetch all ingredient prices across all stores for every meal.
+     * Pass 2 — pick the single store with best global coverage + lowest total, then build all meals from it.
+     */
+    private MealPlanResponse generateWithCheapestStore(int numDays, double budget,
+                                                        List<String> keywords, List<MealEntity> candidates) {
+        record MealSnapshot(MealEntity template, String day, int index,
+                            List<java.util.Map<String, Meal>> ingredientsByStore) {}
+
+        // Pass 1: collect ingredient data for every day across all stores
+        List<MealSnapshot> snapshots = new ArrayList<>();
+        java.util.Map<String, Double>  globalCosts    = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Integer> globalCoverage = new java.util.LinkedHashMap<>();
+
+        for (int i = 0; i < numDays; i++) {
+            String keyword = keywords.get(i % keywords.size());
+            String day = DAYS[i % DAYS.length];
+            MealEntity template = findTemplate(candidates, keyword, i);
+            log.info("Day {}: selected meal '{}' (cheapest-store pass 1)", i + 1, template.getName());
+
+            List<java.util.Map<String, Meal>> ingredientsByStore = new ArrayList<>();
+            for (MealIngredientEntity ingredient : template.getIngredients()) {
+                java.util.Map<String, Meal> byStore = kassalappService.searchProductAllStores(
+                        ingredient.getSearchTerm(), i + 1, day, ingredient.getMinPrice());
+                ingredientsByStore.add(byStore);
+                byStore.forEach((store, meal) -> {
+                    globalCosts.merge(store, meal.price(), Double::sum);
+                    globalCoverage.merge(store, 1, Integer::sum);
+                });
+            }
+            snapshots.add(new MealSnapshot(template, day, i, ingredientsByStore));
+        }
+
+        // Find the one store with the highest ingredient coverage, tiebroken by lowest total cost
+        int maxCoverage = globalCoverage.values().stream().mapToInt(v -> v).max().orElse(0);
+        String bestStore = globalCoverage.entrySet().stream()
+                .filter(e -> e.getValue() == maxCoverage)
+                .min(java.util.Comparator.comparingDouble(e -> globalCosts.getOrDefault(e.getKey(), Double.MAX_VALUE)))
+                .map(java.util.Map.Entry::getKey)
+                .orElse(null);
+
+        if (bestStore == null) return new MealPlanResponse(List.of(), List.of(), 0);
+        log.info("Globally cheapest store across all meals: '{}'", bestStore);
+
+        // Pass 2: build meals using only the chosen store
+        List<Meal> meals = new ArrayList<>();
+        List<IngredientItem> shoppingList = new ArrayList<>();
+        double totalCost = 0;
+
+        for (MealSnapshot snap : snapshots) {
+            List<IngredientItem> mealIngredients = new ArrayList<>();
+            double mealCost = 0;
+
+            List<MealIngredientEntity> templateIngredients = snap.template().getIngredients();
+            for (int j = 0; j < templateIngredients.size(); j++) {
+                MealIngredientEntity ingredient = templateIngredients.get(j);
+                Meal priceResult = snap.ingredientsByStore().get(j).get(bestStore);
+                if (priceResult == null) continue;
+                mealIngredients.add(new IngredientItem(
+                        ingredient.getDisplayName(), ingredient.getAmount(),
+                        priceResult.name(), priceResult.price(), bestStore, snap.day()));
+                mealCost += priceResult.price();
+            }
+
+            if (mealIngredients.isEmpty()) continue;
+            mealCost = Math.round(mealCost * 100.0) / 100.0;
+            if (totalCost + mealCost > budget) continue;
+
+            meals.add(new Meal(snap.index() + 1, snap.day(), snap.template().getName(), bestStore, mealCost));
             shoppingList.addAll(mealIngredients);
             totalCost += mealCost;
         }

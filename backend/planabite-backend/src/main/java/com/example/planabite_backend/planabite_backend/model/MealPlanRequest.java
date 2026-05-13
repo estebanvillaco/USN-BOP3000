@@ -6,5 +6,6 @@ public record MealPlanRequest(
         String dietType,
         String allergies,
         String preferences,
-        String goal
+        String goal,
+        String preferredStore
 ) {}
