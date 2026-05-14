@@ -74,7 +74,7 @@ public class MealPlanService {
             if (totalCost + mealCost > budget) continue;
 
             String mainStore = mealIngredients.get(0).store();
-            meals.add(new Meal(i + 1, day, template.getName(), mainStore, mealCost));
+            meals.add(new Meal(template.getId().intValue(), day, template.getName(), mainStore, mealCost));
             shoppingList.addAll(mealIngredients);
             totalCost += mealCost;
         }
@@ -151,7 +151,7 @@ public class MealPlanService {
             mealCost = Math.round(mealCost * 100.0) / 100.0;
             if (totalCost + mealCost > budget) continue;
 
-            meals.add(new Meal(snap.index() + 1, snap.day(), snap.template().getName(), bestStore, mealCost));
+            meals.add(new Meal(snap.template().getId().intValue(), snap.day(), snap.template().getName(), bestStore, mealCost));
             shoppingList.addAll(mealIngredients);
             totalCost += mealCost;
         }
