@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import MealPlanCard from "../components/MealPlanCard";
 import ShoppingList from "../components/ShoppingList";
@@ -8,8 +8,10 @@ import RecipeModal from "../components/RecipeModal";
 function ResultsPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const mealPlan = location.state?.mealPlan;
+  const mealPlan = location.state?.mealPlan
+    ?? JSON.parse(sessionStorage.getItem("lastMealPlan") ?? "null");
   const [selectedMeal, setSelectedMeal] = useState(null);
+  const recipeCache = useRef({});
 
   if (!mealPlan) {
     return (
@@ -21,9 +23,26 @@ function ResultsPage() {
     );
   }
 
+  const warnings = mealPlan.warnings ?? [];
+
   return (
     <div className="page">
       <h2>Resultater</h2>
+
+      {warnings.length > 0 && (
+        <div style={{
+          background: "#fff3cd",
+          border: "1px solid #ffc107",
+          borderRadius: "8px",
+          padding: "0.75rem 1rem",
+          marginBottom: "1rem",
+        }}>
+          <strong>Noen ingredienser ble ikke funnet:</strong>
+          <ul style={{ margin: "0.4rem 0 0 1rem", padding: 0 }}>
+            {warnings.map((w, i) => <li key={i} style={{ fontSize: "0.9rem" }}>{w}</li>)}
+          </ul>
+        </div>
+      )}
 
       {mealPlan.meals.length === 0 ? (
         <p>Ingen måltider funnet innenfor budsjettet. Prøv å øke budsjettet eller endre preferansene.</p>
@@ -48,7 +67,11 @@ function ResultsPage() {
       <PriceSummary totalCost={mealPlan.totalCost} />
 
       {selectedMeal && (
-        <RecipeModal meal={selectedMeal} onClose={() => setSelectedMeal(null)} />
+        <RecipeModal
+          meal={selectedMeal}
+          onClose={() => setSelectedMeal(null)}
+          recipeCache={recipeCache}
+        />
       )}
     </div>
   );

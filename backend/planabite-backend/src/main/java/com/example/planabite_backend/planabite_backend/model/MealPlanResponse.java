@@ -5,5 +5,6 @@ import java.util.List;
 public record MealPlanResponse(
         List<Meal> meals,
         List<IngredientItem> shoppingList,
-        double totalCost
+        double totalCost,
+        List<String> warnings
 ) {}

@@ -14,7 +14,7 @@ function scaleAmount(amount, scale) {
   return unit ? `${formatted} ${unit}` : `${formatted}`;
 }
 
-function RecipeModal({ meal, onClose }) {
+function RecipeModal({ meal, onClose, recipeCache }) {
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,6 +22,13 @@ function RecipeModal({ meal, onClose }) {
 
   useEffect(() => {
     if (!meal) return;
+    const cached = recipeCache?.current?.[meal.id];
+    if (cached) {
+      setRecipe(cached);
+      setServings(meal.requestedServings ?? cached.defaultServings);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     fetch(`http://localhost:8080/api/meal/${meal.id}/recipe`)
@@ -30,8 +37,9 @@ function RecipeModal({ meal, onClose }) {
         return res.json();
       })
       .then((data) => {
+        if (recipeCache) recipeCache.current[meal.id] = data;
         setRecipe(data);
-        setServings(data.defaultServings);
+        setServings(meal.requestedServings ?? data.defaultServings);
         setLoading(false);
       })
       .catch((err) => {
@@ -71,6 +79,12 @@ function RecipeModal({ meal, onClose }) {
                 style={styles.servingsInput}
               />
             </div>
+
+            {servings !== meal.requestedServings && (
+              <p style={styles.servingsNote}>
+                Handlelisten er beregnet for {meal.requestedServings} porsjon{meal.requestedServings !== 1 ? "er" : ""}.
+              </p>
+            )}
 
             <p style={styles.priceEstimate}>
               Estimert pris for {servings} person{servings !== 1 ? "er" : ""}:{" "}
@@ -177,6 +191,11 @@ const styles = {
     border: "1px solid #ccc",
     borderRadius: "6px",
     fontSize: "1rem",
+  },
+  servingsNote: {
+    color: "#e67e22",
+    fontSize: "0.85rem",
+    marginBottom: "0.5rem",
   },
   priceEstimate: {
     color: "#555",

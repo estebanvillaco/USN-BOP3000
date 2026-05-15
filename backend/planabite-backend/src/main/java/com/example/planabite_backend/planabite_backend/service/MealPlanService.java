@@ -13,7 +13,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class MealPlanService {
@@ -35,17 +39,19 @@ public class MealPlanService {
     public MealPlanResponse generate(MealPlanRequest request) {
         int numDays = parseIntOrDefault(request.days(), 7);
         double budget = parseDoubleOrDefault(request.budget(), Double.MAX_VALUE);
+        int requestedServings = parseIntOrDefault(request.servings(), 0); // 0 = use each meal's default
 
         List<MealEntity> library = mealRepository.findAll();
         List<String> keywords = resolveKeywords(request.preferences(), request.goal(), request.dietType());
         List<MealEntity> candidates = filterByDiet(library, request.dietType(), request.allergies());
 
         if ("cheapest".equals(request.preferredStore())) {
-            return generateWithCheapestStore(numDays, budget, keywords, candidates);
+            return generateWithCheapestStore(numDays, budget, keywords, candidates, requestedServings);
         }
 
         List<Meal> meals = new ArrayList<>();
         List<IngredientItem> shoppingList = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
         double totalCost = 0;
 
         for (int i = 0; i < numDays; i++) {
@@ -55,15 +61,21 @@ public class MealPlanService {
             MealEntity template = findTemplate(candidates, keyword, i);
             log.info("Day {}: selected meal '{}'", i + 1, template.getName());
 
+            int effectiveServings = requestedServings > 0 ? requestedServings : template.getDefaultServings();
+            double scale = (double) effectiveServings / template.getDefaultServings();
+
             List<IngredientItem> mealIngredients = new ArrayList<>();
             double mealCost = 0;
 
             for (MealIngredientEntity ingredient : template.getIngredients()) {
                 Meal priceResult = kassalappService.searchProduct(
                         ingredient.getSearchTerm(), i + 1, day, ingredient.getMinPrice(), request.preferredStore());
-                if (priceResult == null) continue;
+                if (priceResult == null) {
+                    warnings.add(ingredient.getDisplayName() + " ble ikke funnet i butikken og mangler i handlelisten.");
+                    continue;
+                }
                 mealIngredients.add(new IngredientItem(
-                        ingredient.getDisplayName(), ingredient.getAmount(),
+                        ingredient.getDisplayName(), scaleAmount(ingredient.getAmount(), scale),
                         priceResult.name(), priceResult.price(), priceResult.store(), day));
                 mealCost += priceResult.price();
             }
@@ -74,12 +86,12 @@ public class MealPlanService {
             if (totalCost + mealCost > budget) continue;
 
             String mainStore = mealIngredients.get(0).store();
-            meals.add(new Meal(template.getId().intValue(), day, template.getName(), mainStore, mealCost));
+            meals.add(new Meal(template.getId().intValue(), day, template.getName(), mainStore, mealCost, effectiveServings));
             shoppingList.addAll(mealIngredients);
             totalCost += mealCost;
         }
 
-        return new MealPlanResponse(meals, shoppingList, Math.round(totalCost * 100.0) / 100.0);
+        return new MealPlanResponse(meals, consolidateShoppingList(shoppingList), Math.round(totalCost * 100.0) / 100.0, warnings);
     }
 
     /**
@@ -88,7 +100,8 @@ public class MealPlanService {
      * Pass 2 — pick the single store with best global coverage + lowest total, then build all meals from it.
      */
     private MealPlanResponse generateWithCheapestStore(int numDays, double budget,
-                                                        List<String> keywords, List<MealEntity> candidates) {
+                                                        List<String> keywords, List<MealEntity> candidates,
+                                                        int requestedServings) {
         record MealSnapshot(MealEntity template, String day, int index,
                             List<java.util.Map<String, Meal>> ingredientsByStore) {}
 
@@ -124,15 +137,19 @@ public class MealPlanService {
                 .map(java.util.Map.Entry::getKey)
                 .orElse(null);
 
-        if (bestStore == null) return new MealPlanResponse(List.of(), List.of(), 0);
+        if (bestStore == null) return new MealPlanResponse(List.of(), List.of(), 0, List.of());
         log.info("Globally cheapest store across all meals: '{}'", bestStore);
 
         // Pass 2: build meals using only the chosen store
         List<Meal> meals = new ArrayList<>();
         List<IngredientItem> shoppingList = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
         double totalCost = 0;
 
         for (MealSnapshot snap : snapshots) {
+            int effectiveServings = requestedServings > 0 ? requestedServings : snap.template().getDefaultServings();
+            double scale = (double) effectiveServings / snap.template().getDefaultServings();
+
             List<IngredientItem> mealIngredients = new ArrayList<>();
             double mealCost = 0;
 
@@ -140,9 +157,12 @@ public class MealPlanService {
             for (int j = 0; j < templateIngredients.size(); j++) {
                 MealIngredientEntity ingredient = templateIngredients.get(j);
                 Meal priceResult = snap.ingredientsByStore().get(j).get(bestStore);
-                if (priceResult == null) continue;
+                if (priceResult == null) {
+                    warnings.add(ingredient.getDisplayName() + " ble ikke funnet i butikken og mangler i handlelisten.");
+                    continue;
+                }
                 mealIngredients.add(new IngredientItem(
-                        ingredient.getDisplayName(), ingredient.getAmount(),
+                        ingredient.getDisplayName(), scaleAmount(ingredient.getAmount(), scale),
                         priceResult.name(), priceResult.price(), bestStore, snap.day()));
                 mealCost += priceResult.price();
             }
@@ -151,12 +171,12 @@ public class MealPlanService {
             mealCost = Math.round(mealCost * 100.0) / 100.0;
             if (totalCost + mealCost > budget) continue;
 
-            meals.add(new Meal(snap.template().getId().intValue(), snap.day(), snap.template().getName(), bestStore, mealCost));
+            meals.add(new Meal(snap.template().getId().intValue(), snap.day(), snap.template().getName(), bestStore, mealCost, effectiveServings));
             shoppingList.addAll(mealIngredients);
             totalCost += mealCost;
         }
 
-        return new MealPlanResponse(meals, shoppingList, Math.round(totalCost * 100.0) / 100.0);
+        return new MealPlanResponse(meals, consolidateShoppingList(shoppingList), Math.round(totalCost * 100.0) / 100.0, warnings);
     }
 
     private List<MealEntity> filterByDiet(List<MealEntity> library, String dietType, String allergies) {
@@ -244,6 +264,69 @@ public class MealPlanService {
             case "muscle_gain" -> MUSCLE_GAIN_TAGS;
             default            -> DEFAULT_TAGS;
         };
+    }
+
+    private List<IngredientItem> consolidateShoppingList(List<IngredientItem> items) {
+        Map<String, IngredientItem> consolidated = new LinkedHashMap<>();
+        for (IngredientItem item : items) {
+            String key = item.name().toLowerCase() + "|" + item.store();
+            IngredientItem existing = consolidated.get(key);
+            if (existing == null) {
+                consolidated.put(key, item);
+            } else {
+                double newPrice = Math.round((existing.price() + item.price()) * 100.0) / 100.0;
+                String newAmount = sumAmounts(existing.amount(), item.amount());
+                String newDay = mergeDays(existing.day(), item.day());
+                consolidated.put(key, new IngredientItem(existing.name(), newAmount, existing.productName(), newPrice, existing.store(), newDay));
+            }
+        }
+        return new ArrayList<>(consolidated.values());
+    }
+
+    private static String sumAmounts(String a, String b) {
+        if (a == null || a.isBlank()) return b;
+        if (b == null || b.isBlank()) return a;
+        Matcher ma = AMOUNT_PATTERN.matcher(a.trim());
+        Matcher mb = AMOUNT_PATTERN.matcher(b.trim());
+        if (ma.matches() && mb.matches()) {
+            String unitA = ma.group(2).trim();
+            String unitB = mb.group(2).trim();
+            if (unitA.equalsIgnoreCase(unitB)) {
+                double sum = parseNumPart(ma.group(1)) + parseNumPart(mb.group(1));
+                String formatted = (sum % 1.0 == 0.0) ? String.valueOf((int) sum) : String.format("%.1f", sum);
+                return unitA.isEmpty() ? formatted : formatted + " " + unitA;
+            }
+        }
+        return a + " + " + b;
+    }
+
+    private static String mergeDays(String existing, String incoming) {
+        if (existing == null || existing.isBlank()) return incoming;
+        if (incoming == null || incoming.isBlank()) return existing;
+        if (existing.contains(incoming)) return existing;
+        return existing + ", " + incoming;
+    }
+
+    private static final Pattern AMOUNT_PATTERN = Pattern.compile("^(\\d+(?:/\\d+)?(?:\\.\\d+)?)\\s*(.*)$");
+
+    static String scaleAmount(String amount, double scale) {
+        if (amount == null || amount.isBlank() || scale == 1.0) return amount;
+        Matcher m = AMOUNT_PATTERN.matcher(amount.trim());
+        if (!m.matches()) return amount;
+        double scaled = parseNumPart(m.group(1)) * scale;
+        String unit = m.group(2);
+        String formatted = (scaled % 1.0 == 0.0)
+                ? String.valueOf((int) scaled)
+                : String.format("%.1f", scaled);
+        return (unit != null && !unit.isEmpty()) ? formatted + " " + unit : formatted;
+    }
+
+    private static double parseNumPart(String numPart) {
+        if (numPart.contains("/")) {
+            String[] parts = numPart.split("/");
+            return Double.parseDouble(parts[0]) / Double.parseDouble(parts[1]);
+        }
+        return Double.parseDouble(numPart);
     }
 
     private int parseIntOrDefault(String value, int defaultValue) {

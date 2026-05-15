@@ -5,5 +5,6 @@ public record Meal(
         String day,
         String name,
         String store,
-        double price
+        double price,
+        int requestedServings
 ) {}

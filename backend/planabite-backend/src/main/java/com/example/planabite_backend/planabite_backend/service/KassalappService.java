@@ -106,7 +106,7 @@ public class KassalappService {
             String storeName = selected.path("store").path("name").asText("Ukjent butikk");
 
             log.info("Selected: '{}' at {} kr from {}", name, selectedPrice, storeName);
-            return new Meal(mealId, day, name, storeName, selectedPrice);
+            return new Meal(mealId, day, name, storeName, selectedPrice, 0);
 
         } catch (Exception e) {
             log.error("Error searching Kassalapp for '{}': {}", query, e.getMessage(), e);
@@ -161,7 +161,7 @@ public class KassalappService {
                 String store = entry.getKey();
                 String name  = entry.getValue().path("name").asText("Ukjent produkt");
                 double price = bestPriceByStore.get(store);
-                result.put(store, new Meal(mealId, day, name, store, price));
+                result.put(store, new Meal(mealId, day, name, store, price, 0));
             }
             log.info("Found products for '{}' at {} stores", query, result.size());
             return result;

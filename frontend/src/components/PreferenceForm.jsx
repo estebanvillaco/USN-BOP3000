@@ -10,7 +10,8 @@ function PreferenceForm({ goal = "healthy" }) {
     dietType: "None",
     allergies: "",
     preferences: "",
-    preferredStore: ""
+    preferredStore: "",
+    servings: "4"
   });
 
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,7 @@ function PreferenceForm({ goal = "healthy" }) {
       }
 
       const mealPlan = await response.json();
+      sessionStorage.setItem("lastMealPlan", JSON.stringify(mealPlan));
       navigate("/results", { state: { mealPlan } });
     } catch (err) {
       setError(err.message);
@@ -58,6 +60,7 @@ function PreferenceForm({ goal = "healthy" }) {
         value={formData.budget}
         onChange={handleChange}
         placeholder="F.eks. 500"
+        min="1"
         required
       />
 
@@ -93,6 +96,17 @@ function PreferenceForm({ goal = "healthy" }) {
         value={formData.preferences}
         onChange={handleChange}
         placeholder="F.eks. pasta, kylling, fisk"
+      />
+
+      <label>Antall porsjoner per måltid</label>
+      <input
+        type="number"
+        name="servings"
+        value={formData.servings}
+        onChange={handleChange}
+        min="1"
+        max="20"
+        placeholder="F.eks. 4"
       />
 
       <label>Butikkvalg</label>
